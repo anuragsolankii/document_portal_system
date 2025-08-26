@@ -23,15 +23,32 @@ from src.document_chat.retrieval import ConversationalRAG
 from utils.document_ops import FastAPIFileAdapter,read_pdf_via_handler
 from logger import GLOBAL_LOGGER as log
 
+# Load environment variables
+from dotenv import load_dotenv
+load_dotenv()
+
 FAISS_BASE = os.getenv("FAISS_BASE", "faiss_index")
 UPLOAD_BASE = os.getenv("UPLOAD_BASE", "data")
-FAISS_INDEX_NAME = os.getenv("FAISS_INDEX_NAME", "index")  # <--- keep consistent with save_local()
+FAISS_INDEX_NAME = os.getenv("FAISS_INDEX_NAME", "index")
+PORT = int(os.getenv("PORT", "8093"))
+HOST = os.getenv("HOST", "0.0.0.0")
 
 app = FastAPI(title="Document Portal API", version="0.1")
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-app.mount("/static", StaticFiles(directory=str(BASE_DIR / "static")), name="static")
-templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
+
+# Ensure required directories exist
+static_dir = BASE_DIR / "static"
+templates_dir = BASE_DIR / "templates"
+faiss_dir = BASE_DIR / FAISS_BASE
+upload_dir = BASE_DIR / UPLOAD_BASE
+
+# Create directories if they don't exist
+faiss_dir.mkdir(exist_ok=True)
+upload_dir.mkdir(exist_ok=True)
+
+app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+templates = Jinja2Templates(directory=str(templates_dir))
 
 app.add_middleware(
     CORSMiddleware,
@@ -161,5 +178,9 @@ async def chat_query(
         raise HTTPException(status_code=500, detail=f"Query failed: {e}")
 
 # command for executing the fast api
-# uvicorn api.main:app --port 8080 --reload    
-#uvicorn api.main:app --host 0.0.0.0 --port 8080 --reload
+# uvicorn api.main:app --port 8093 --reload    
+# uvicorn api.main:app --host 0.0.0.0 --port 8093 --reload
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host=HOST, port=PORT, reload=True)
